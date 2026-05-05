@@ -4,33 +4,194 @@ This script contains functions usefull for the data visualization
 
 import matplotlib.pyplot as plt
 import matplotlib 
-import numpy as np
+import cupy as np
 import math
 
-def plot_energy_landscape():
-    pass
+def dynamic_positions(axes, dy):
+    # transform axes in a list 
+    axes = np.atleast_1d(axes)
+
+    left_ax = axes[0]
+    right_ax = axes[1] if len(axes) > 1 else axes[0]
+        
+    pos_left = left_ax.get_position()
+    pos_right = right_ax.get_position()
+
+    # coordinats
+    y_top = pos_left.y1 + dy 
+    
+    return  pos_left, pos_right, y_top
+
+
+
+
+
+def plot_diagram_phase(temps, alphas, phase_data, mappings, 
+                       title='***Missing Title***', 
+                       cbar_label='', x_label='', y_label='',
+                       vmin=None, vmax=None):
+    fig, ax = plt.subplots()
+
+    cmap = plt.cm.viridis  # puoi cambiare colormap
+    norm = plt.Normalize(temps.min(), temps.max())
+    
+    # include the label for the micro system data
+    mapping_label = mappings.copy()
+    mapping_label.insert(0, 'None') 
+    
+    # index over the mappings
+    for k in range(phase_data.shape[-1]):
+        
+        for i, T in enumerate(temps):
+            color = cmap(norm(T))
+            
+            linestyle = ['-', '--', ':', '-.', '.'][k % 4]
+            
+            if i == 0:  # labelling the mapping 
+                ax.plot(
+                    alphas[:, 0],#k
+                    phase_data[i, :, k],
+                    color=color,
+                    linestyle=linestyle,
+                    label = f'mapping: {mapping_label[k]}' 
+                )
+            else: 
+                 ax.plot(
+                     alphas[:, 0],#k
+                     phase_data[i, :, k],
+                     color=color,
+                     linestyle=linestyle
+                 )
+
+    # colorbar per riferimento
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    plt.colorbar(sm, ax=ax, label=cbar_label)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    return fig, ax 
+   
+def heatmap_diagram_phase(x_data, y_data, z_data, system_info = None,
+                       title='***Missing Title***', 
+                       cbar_label='', x_label='', y_label='',
+                       xlim=None, ylim=None):
+
+    fig, ax = plt.subplots()
+    ax.set_aspect('auto')
+    
+    if system_info is not None: fig.subplots_adjust(top=0.80)
+    
+    X, Y = np.meshgrid(x_data, y_data)
+
+    pcm = ax.pcolormesh(X, Y, z_data, shading='auto')
+
+    ax.set(xlim = xlim, ylim = ylim)
+    # opzional: level line
+    # ax.contour(X, Y, z_data, colors='black', linewidths=0.5)
+
+    cbar = fig.colorbar(pcm, ax=ax)
+    cbar.set_label(cbar_label)
+
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    
+    # title
+    ax.set_title(title, size=12, y=1.1)   
+    
+    pos_left, _, y_top = dynamic_positions(ax, dy = 0.02)
+    
+    if system_info is not None:
+        text_left = "  |  ".join(
+            [f"${k}$: {v}" for k, v in system_info.items()]
+            )
+
+        fig.text(
+            pos_left.x0,      # alligned to the left subplot
+            y_top,
+            text_left,
+            ha="left",
+            va="bottom",
+            fontsize=8,
+            bbox=dict(
+                boxstyle="round,pad=0.4",
+                facecolor="whitesmoke",
+                edgecolor="black"
+            )
+        )
+    return fig, ax
+
+    
+def plot_state_sequence_and_overlap(state_sequence, overlap_matrix, color_map="brg"):
+    """
+    Plots:
+    1. Evolution of spin states over time (heatmap)
+    2. Overlap with patterns over time (line plot)
+
+    Args:
+        state_sequence: cupy.ndarray of shape (steps, N) or (N, steps)
+        overlap_matrix: cupy.ndarray of shape (nr_patterns, steps)
+    """
+
+    # shape is (steps, N)
+    steps, N = state_sequence.shape
+    nr_patterns, _ = overlap_matrix.shape
+
+    fig, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+
+    # --- Top: neuron states ---
+    im = axs[0].imshow(
+        state_sequence.T,
+        aspect='auto',
+        cmap='RdYlBu',
+        interpolation='nearest'
+        )
+    axs[0].set_title("Spin states over time")
+    axs[0].set_ylabel("Spin index")
+
+    # Set minor ticks at cell boundaries
+    axs[0].set_xticks(np.arange(0.5, steps, 1), minor=True)
+    axs[0].set_yticks(np.arange(0.5, N, 1), minor=True)
+    
+    # Draw grid
+    axs[0].grid(which='minor', color='grey', linestyle='-', linewidth=1)
+    
+    # Hide minor tick marks (keep only grid)
+    axs[0].tick_params(which='minor', bottom=False, left=False)
+    
+    # Optional colorbar
+    #plt.colorbar(im, ax=axs[0], orientation='vertical')
+    
+    # --- Bottom: overlaps ---
+    for i in range(nr_patterns):
+        axs[1].plot(np.arange(steps), overlap_matrix[i, :], label=f"$m^{i}(s(t))$")
+
+    axs[1].set_title("Overlap measure in time")
+    axs[1].set_ylim([-1.05, 1.05])
+    axs[1].set_xlabel("Time")
+    axs[1].set_ylabel("$m^{\mu}(s(t))$")
+    axs[1].legend()
+
+    plt.tight_layout()
+    plt.show()
+    
 
 def plot_measures_subplots(
-    data_1, 
-    data_2=None, 
-    CE_dict=None, 
+    df, 
+    CE_df=None, 
     system_info=None,
-    scale_labels=['micro', 'macro']
+    scale_labels=['first', 'second'], 
+    title = ''
 ):
-
-    list_of_measures = list(data_1.keys())
-    
+       
     # remove 'number of states'
-    list_of_measures = [m for m in list_of_measures if m != "number of states"]
-
-    if data_2 is None:
-        all_data = data_1
-    else: 
-        all_data = {
-            measure: [data_1[measure], data_2[measure]] 
-            for measure in list_of_measures
-        }
-
+    df = df.drop(columns=["number of states"], errors="ignore")
+    
+    list_of_measures = df.columns.tolist()
+    scale_labels = df.index.tolist()
+    
     n_plots = len(list_of_measures)
     n_cols = 2
     n_rows = math.ceil(n_plots / n_cols) 
@@ -42,15 +203,16 @@ def plot_measures_subplots(
     axes = axes.flatten()
 
     # leave space above for title and info
-    fig.subplots_adjust(top=0.80)
+    fig.subplots_adjust(top=0.70)
 
-    for i, measure in enumerate(all_data):
-        axes[i].bar(scale_labels, all_data[measure], width=0.7)
+    for i, measure in enumerate(list_of_measures):
+        values = df[measure].values
+        
+        axes[i].bar(scale_labels, values, width=0.7)
         axes[i].set_title(measure)
         axes[i].grid(True)
         
         if measure != 'EI':
-            axes[i].set_xlim([0, 1.1])
             axes[i].set_ylim([0, 1.1])
 
     # remove unused axes
@@ -58,17 +220,10 @@ def plot_measures_subplots(
         fig.delaxes(axes[j])
 
     # title
-    fig.suptitle("Causal Measures Across Scales", fontsize=18, y=0.98)
+    fig.suptitle(title, size=18, y=0.98)
 
     # dynamic positions such that the two boxes we will create are alligned with the subplots
-    left_ax = axes[0]
-    right_ax = axes[1] if len(axes) > 1 else axes[0]
-        
-    pos_left = left_ax.get_position()
-    pos_right = right_ax.get_position()
-
-    # coordinats
-    y_top = pos_left.y1 + 0.05   
+    pos_left, pos_right, y_top = dynamic_positions(axes, dy = 0.05)
     
     # -------------------------------
     # Left box: system_info
@@ -84,7 +239,7 @@ def plot_measures_subplots(
             text_left,
             ha="left",
             va="bottom",
-            fontsize=12,
+            fontsize=11,
             bbox=dict(
                 boxstyle="round,pad=0.4",
                 facecolor="whitesmoke",
@@ -96,11 +251,13 @@ def plot_measures_subplots(
     # Right box: CE_dict
     # -------------------------------
 
-    if CE_dict is not None:
-        text_right = "\n".join(
-            [f"${k}$: {v:.3f}" for k, v in CE_dict.items()]
-        )
-
+    if CE_df is not None:
+        text_list = []
+        for row in range(CE_df.shape[0]-1):
+            text_row = "  ".join([f"${k}$: {v:.3f}" 
+                                   for k, v in CE_df.iloc[row + 1].items()])
+            text_list.append(text_row)
+        text_right = '\n'.join(text_list)
         fig.text(
             pos_right.x1,    # alligned to the right subplot
             y_top,
@@ -120,12 +277,12 @@ def plot_measures_subplots(
 def heatmap(data, config_labels = None, title= '***Missing Title***', cbar_label = '', ax=None,
             cbar_kw=None, **kwargs):
     """
-    Create a heatmap from a numpy array and two lists of labels.
+    Create a heatmap from a cupy array and two lists of labels.
 
     Parameters
     ----------
     data : np.ndarray
-        A 2D numpy array of shape (M, N).
+        A 2D cupy array of shape (M, N).
         
     config_labels : np.ndarray, optional
         List of all configurations of the system used as labels on the aces.
@@ -177,7 +334,7 @@ def heatmap(data, config_labels = None, title= '***Missing Title***', cbar_label
 
     return im
 
-def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
+def annotate_heatmap(im, data=None, valfmt="{x:.3f}",
                      textcolors=("white", "black"),
                      threshold=None):
     """
@@ -205,7 +362,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
         data = im.get_array()
         
         # annotate the matrix only if its dimensions are small enough 
-        if len(data) < 16:  
+        if len(data) < 10:  
             
             # Normalize the threshold to the images color range.
             if threshold is not None:

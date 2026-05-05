@@ -1,4 +1,4 @@
-import numpy as np 
+import cupy as np 
 
 class IsingSystem: 
     
@@ -19,14 +19,13 @@ class IsingSystem:
         
         if configs is None: #used for computing the Hamiltonian 
             self.configs = self.create_configs()
+            self.J = self.interaction_matrix()
 
         else: 
             self.configs = configs # I want to pass them for the macro system to keep track of errors (e.s. block with even spins )
 
         # quantities often reused
-        self.n_configs = len(self.configs)                                      # se tolgo normalization, anche questo non serve
-        self.J = self.interaction_matrix()
-        self.equilibrium_distribution = self.canonical_distribution()
+        self.n_configs = np.shape(self.configs)[0]                                      # se tolgo normalization, anche questo non serve
 
     def create_configs(self):
         '''
@@ -101,8 +100,13 @@ class IsingSystem:
         np.ndarray
             Array storing the energy of each configuration.
 
-        '''
-        return  -0.5 * np.diag(self.configs @ self.J @ self.configs.T)
+        '''        
+        # J @ configs.T | N,N @ N,2^N = N,2^N
+        local_fields = self.J @ self.configs.T
+        
+        # local_fields * configs.T | (N,2^N) * (N,2^N) = (N, 2^N)
+        # then sum over the rows and get an array (2^N,)
+        return  -0.5 * np.sum(local_fields * self.configs.T, axis=0)
     
         
     def canonical_distribution(self):

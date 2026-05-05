@@ -1,5 +1,12 @@
-import numpy as np
-from utils import indexing_configs
+""" 
+Coarse grain the system 
++ add check points: sum(block_sizes)==number of micro spins 
++ add check points: the elements of block_sizes must be odd
+"""
+
+
+import cupy as np
+from utils import indexing_configs, shuffle_spin_order
 from ising import IsingSystem
 from dynamics import GlauberDynamics
 
@@ -9,13 +16,21 @@ class CoarseGraining:
     system and dynamics.
     '''
     
-    def __init__(self, system, dynamics, patterns, block_sizes):
+    def __init__(self, system, dynamics, patterns, block_sizes, relabeling = None):
         self.system = system
-        self.micro_configs = system.configs
+        
+        if relabeling is not None: 
+            self.micro_configs = shuffle_spin_order(system.configs, relabeling)
+            patterns = shuffle_spin_order(patterns, relabeling)
+
+        else: 
+            self.micro_configs = system.configs
+            
         self.TPM_micro = dynamics.TPM
         self.block_sizes = block_sizes # qui poi con un if calcolerò i vari blocchi nel caso non siano passati a mano
-
-        self.macro_patterns, self.macro_patterns_idx = self.map_micro_to_macro(patterns) # se vuoi poi calcella macro_patterns_idx
+        
+        
+        self.macro_patterns, _ = self.map_micro_to_macro(patterns) # se vuoi poi calcella macro_patterns_idx
         self.macro_configs, self.macro_idx = self.map_micro_to_macro(self.micro_configs)
         self.macro_system, self.macro_dynamics  = self.build_macro_model()
         
@@ -34,6 +49,7 @@ class CoarseGraining:
           after the mapping. Then 'macro' has 
           macro.shape()=(number of micro configurations, number of macro spins)
       '''
+      
       splits = np.cumsum(self.block_sizes)[:-1]
       
       # divide the spins into blocks, so the global configurations are splitted 
@@ -54,8 +70,7 @@ class CoarseGraining:
         n_micro = len(self.micro_configs) # number of micro configurations
         n_macro = self.macro_idx.max() + 1 # number of macro configurations
     
-        M = np.zeros((n_micro, n_macro))
-    
+        M = np.zeros((n_micro, n_macro))    
         # set 1 in correspondece of the mapping from a micro configuration 
         # to a macro configuration
         M[np.arange(n_micro), self.macro_idx] = 1                              
@@ -65,7 +80,7 @@ class CoarseGraining:
     def coarse_graining_tpm(self):
 
         M = self.build_projection_matrix()
-
+        
         TPM_macro = M.T @ self.TPM_micro @ M                                
         
         # counts the number of multiple micro realizations of each macro configuration

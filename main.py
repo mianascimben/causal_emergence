@@ -1,32 +1,54 @@
-import numpy as np
+import cupy as np
+import pandas as pd
 from plot_functions import *
 from measures import *
 from ising import IsingSystem
 from dynamics import GlauberDynamics
 from coarsegraining import CoarseGraining
-from utils import store_system_information 
-
-N_spin = 6     # number of spins
-T = 0.001         #temperature
+from utils import store_system_information, concatenate_data, doble_weel_patterns, random_patterns
+N_spin = 9   # number of spins (MULTIPLE OF THREE)
+M = 4        # memorized patterns 
+T = 3         #temperature (not reduce below e^-2 to avoid 'overflow' in the glauber exponent)
 beta = 1/T      # inverse temperature
-block_sizes= [1,3,1,1]
-N_macro_spin = len(block_sizes)
-patterns = np.array([[1,1,1,1,1,1],
-                     [1,1,1,-1,-1,-1]])
-                     
-#patterns = np.array([[1,1,1],[1,1,-1],[1,-1,1]])
+mapping_list = [[3,3,3],[5,3,1],[7,1,1]]
+#[[5,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,5,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,5]]
+#np.random.seed(seed)
 
-system_info = store_system_information(N_spin, T, N_macro_spin, block_sizes)
 
-show_J = True
-show_micro_TPM = True
+patterns = random_patterns(N_spin, M)
 
-micro_system = IsingSystem(N_spin, patterns, beta)
+sm = IsingSystem(N_spin, patterns, beta)
 
-micro_dynamics = GlauberDynamics(micro_system, flips=6)
+dm = GlauberDynamics(sm)
+
+micro_measures = CausalMeasure(dm.TPM, sm.n_configs).compute_all_measures(label = 'micro')
+
+measures_by_scale = micro_measures
+for i, mapping in enumerate(mapping_list): 
+    
+    N_macro_spin = len(mapping)
+    system_info = store_system_information(N_spin, T, N_macro_spin, groups = 'multiple groups')
+    
+    cs = CoarseGraining(sm, dm, patterns, mapping)  #questo passaggio non mi piace. non salva robe utili che system o dynamics non abbia se non i macro patterns
+
+    sM, dM = cs.build_macro_model()
+        
+    group_label = ','.join(str(x) for x in mapping)
+    macro_measures  = CausalMeasure(dM.TPM, sM.n_configs).compute_all_measures(label = group_label)
+    
+    J_im = heatmap(dM.TPM, title='M@TPM for macro system', cbar_label = 'Interaction strength')
+    annotate_heatmap(J_im) 
+    plt.show()
+
+    
+    measures_by_scale = pd.concat([measures_by_scale, macro_measures])
+    
+show_J = False
+show_micro_TPM = False
+show_macro_TPM = False
 
 if show_J == True:
-    J_im = heatmap(micro_system.J, title='J for micro system', cbar_label = 'Interaction strength')
+    J_im = heatmap(sm.J, title='J for micro system', cbar_label = 'Interaction strength')
     annotate_heatmap(J_im) 
     plt.show()
 
@@ -34,23 +56,46 @@ if show_micro_TPM == True:
     if N_spin > 8: 
         pass
     else: 
-        micro_TPM_im = heatmap(micro_dynamics.TPM, micro_system.configs, title = 'TPM for micro system', cbar_label ='Probability')
+        micro_TPM_im = heatmap(dm.TPM, sm.configs, title = 'TPM for micro system', cbar_label ='Probability')
         annotate_heatmap(micro_TPM_im)
         plt.show()
 
+if show_macro_TPM == True:
+    if N_macro_spin > 8: 
+        pass
+    else: 
+        TPM_macro_im = heatmap(dM.TPM, sM.configs, title = 'TPM for macro system', cbar_label ='Probability')
+        annotate_heatmap(TPM_macro_im)
+        plt.show()
+#%%       
+CE_data_v = causal_emergence_vectorized(measures_by_scale)
 
-coarsed_system = CoarseGraining(micro_system, micro_dynamics, patterns, block_sizes)  #questo passaggio non mi piace. non salva robe utili che system o dynamics non abbia se non i macro patterns
+results_im = plot_measures_subplots(measures_by_scale, CE_data_v,
+                                    system_info,
+                                    title = 'Causal Measures Across Scales')
 
-macro_system, macro_dynamics = coarsed_system.build_macro_model()
 
-TPM_macro_im = heatmap(macro_dynamics.TPM, macro_system.configs, title = 'TPM for macro system', cbar_label ='Probability')
-annotate_heatmap(TPM_macro_im)
-plt.show()
 
-#%%
-micro_measures = compute_all_measures(micro_dynamics.TPM, micro_system.n_configs)
-macro_measures = compute_all_measures(macro_dynamics.TPM, macro_system.n_configs)
 
-CE_data = causal_emergence(micro_measures, macro_measures)
 
-results_im = plot_measures_subplots(micro_measures, macro_measures, CE_data, system_info)
+
+
+#%% dynamics
+# =============================================================================
+# steps = N_spin
+# N_configs = 2**N_spin
+# np.random.seed(seed)
+# initial_state = np.random.choice([-1,1], N_spin)
+# 
+# #uniform_micro_distribution = 1/N_configs * np.ones(N_configs)
+# #evolved_micro_distribution = dm.evolution(uniform_micro_distribution, steps=3)
+# 
+# trajectory = dm.run_with_monitoring(initial_state, steps)
+# trajectory_array = np.asarray(trajectory)
+# overlap = compute_overlap_matrix(patterns, trajectory_array)
+# overlap_im = plot_state_sequence_and_overlap(trajectory_array, overlap)
+# plt.show()
+# plt.plot(evolved_micro_distribution, linewidth = 0.3)
+# #
+# =============================================================================
+    
