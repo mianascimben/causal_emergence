@@ -1,4 +1,4 @@
-import cupy as np 
+import numpy as np 
 
 class IsingSystem: 
     
@@ -120,3 +120,4 @@ class IsingSystem:
         
        
        
+ 

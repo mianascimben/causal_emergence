@@ -1,4 +1,4 @@
-import cupy as np
+import numpy as np
 import pandas as pd
 from scipy.stats import entropy
 from ising import IsingSystem
@@ -565,7 +565,7 @@ def compute_phase_diagram(phase_class, patterns):
             if phase_class.micro == True:
                 phases[i, j, 0] = getattr(CausalMeasure(dm.TPM, sm.n_configs),
                                       phase_class.causal_measure)()
-            # else:   phases[i, j, 0] = 0 
+            else:   phases[i, j, 0] = np.nan 
             
             if phase_class.mappings is not None: 
                 for k, mapp in enumerate(phase_class.mappings): 
@@ -584,7 +584,7 @@ def hamming_distance(array1, array2):
     difference = array1 - array2
     return np.sum((difference!=0))
 
-def function(parameters, patterns, causal_measure, mappings=None, micro=True):
+def function(parameters, patterns, causal_measure, mappings=None, micro=True): #to delete if parallelism not used
     n_maps = len(mappings) if mappings is not None else 0
 
     # Creation of the matrix where to store the 'f' values (diagram phase)

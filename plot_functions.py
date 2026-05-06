@@ -4,7 +4,7 @@ This script contains functions usefull for the data visualization
 
 import matplotlib.pyplot as plt
 import matplotlib 
-import cupy as np
+import numpy as np
 import math
 
 def dynamic_positions(axes, dy):
@@ -23,15 +23,12 @@ def dynamic_positions(axes, dy):
     return  pos_left, pos_right, y_top
 
 
-
-
-
 def plot_diagram_phase(temps, alphas, phase_data, mappings, 
                        title='***Missing Title***', 
                        cbar_label='', x_label='', y_label='',
                        vmin=None, vmax=None):
     fig, ax = plt.subplots()
-
+    
     cmap = plt.cm.viridis  # puoi cambiare colormap
     norm = plt.Normalize(temps.min(), temps.max())
     
@@ -49,7 +46,7 @@ def plot_diagram_phase(temps, alphas, phase_data, mappings,
             
             if i == 0:  # labelling the mapping 
                 ax.plot(
-                    alphas[:, 0],#k
+                    alphas,
                     phase_data[i, :, k],
                     color=color,
                     linestyle=linestyle,
@@ -57,7 +54,7 @@ def plot_diagram_phase(temps, alphas, phase_data, mappings,
                 )
             else: 
                  ax.plot(
-                     alphas[:, 0],#k
+                     alphas,
                      phase_data[i, :, k],
                      color=color,
                      linestyle=linestyle
@@ -66,11 +63,25 @@ def plot_diagram_phase(temps, alphas, phase_data, mappings,
     # colorbar per riferimento
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    plt.colorbar(sm, ax=ax, label=cbar_label)
+    if len(temps) > 1:
+        plt.colorbar(sm, ax=ax, label=cbar_label)
+    else: fig.text(
+        0.75, 0.8,
+        f'T = {temps}',
+        ha="left",
+        va="bottom",
+        fontsize=11,
+        bbox=dict(
+            boxstyle="round,pad=0.4",
+            facecolor="whitesmoke",
+            edgecolor="black"
+        )
+    )
+        
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.title(title)
-    plt.legend()
+    plt.legend(loc='best')
     plt.grid(True)
     return fig, ax 
    
@@ -131,8 +142,8 @@ def plot_state_sequence_and_overlap(state_sequence, overlap_matrix, color_map="b
     2. Overlap with patterns over time (line plot)
 
     Args:
-        state_sequence: cupy.ndarray of shape (steps, N) or (N, steps)
-        overlap_matrix: cupy.ndarray of shape (nr_patterns, steps)
+        state_sequence: numpy.ndarray of shape (steps, N) or (N, steps)
+        overlap_matrix: numpy.ndarray of shape (nr_patterns, steps)
     """
 
     # shape is (steps, N)
@@ -277,12 +288,12 @@ def plot_measures_subplots(
 def heatmap(data, config_labels = None, title= '***Missing Title***', cbar_label = '', ax=None,
             cbar_kw=None, **kwargs):
     """
-    Create a heatmap from a cupy array and two lists of labels.
+    Create a heatmap from a numpy array and two lists of labels.
 
     Parameters
     ----------
     data : np.ndarray
-        A 2D cupy array of shape (M, N).
+        A 2D numpy array of shape (M, N).
         
     config_labels : np.ndarray, optional
         List of all configurations of the system used as labels on the aces.

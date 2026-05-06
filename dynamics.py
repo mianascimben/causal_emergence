@@ -1,4 +1,4 @@
-import cupy as np
+import numpy as np
 from itertools import combinations
 
 class GlauberDynamics:                                                              #questa potrebbe essere solo la funzione pura che fa TPM, ma per ora va bene così

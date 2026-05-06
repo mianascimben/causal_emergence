@@ -1,4 +1,4 @@
-import cupy as np
+import numpy as np
 import pandas as pd
 from plot_functions import *
 from measures import *
@@ -12,8 +12,7 @@ T = 3         #temperature (not reduce below e^-2 to avoid 'overflow' in the gla
 beta = 1/T      # inverse temperature
 mapping_list = [[3,3,3],[5,3,1],[7,1,1]]
 #[[5,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,5,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,5]]
-#np.random.seed(seed)
-
+np.random.seed(seed)
 
 patterns = random_patterns(N_spin, M)
 

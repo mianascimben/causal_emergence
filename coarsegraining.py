@@ -5,7 +5,7 @@ Coarse grain the system
 """
 
 
-import cupy as np
+import numpy as np
 from utils import indexing_configs, shuffle_spin_order
 from ising import IsingSystem
 from dynamics import GlauberDynamics

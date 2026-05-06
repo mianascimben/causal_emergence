@@ -4,7 +4,7 @@
 Phase diagram creation parallelizing the trials
 """
 # Importing useful modules/functions
-import cupy as np
+import numpy as np
 from plot_functions import heatmap_diagram_phase, plot_diagram_phase
 from measures import compute_phase_diagram
 from utils import doble_weel_patterns, store_system_information, compute_all_alphas, PhaseParameters
@@ -18,17 +18,17 @@ if __name__ == "__main__":
     seed = 139390
     np.random.seed(seed)
     
-    trials = 2
+    trials = 20
 
     N_spin = 15   # number of spins (MULTIPLE OF THREE)
-    mappings = [[5,5,5]]#[[3,3,3,3,3],[5,5,5]]   
+    mappings = [[13,1,1]]   
     phase = 'effectiveness'
     
-    T_min = 0.01; T_max = 3.01; T_points = 2
+    T_min = 0.01; T_max = 3.01; T_points = 5
     temps = np.linspace(T_min, T_max, T_points)       #temperature (not reduce below e^-2 to avoid 'overflow' in the glauber exponent)
     
     # n_memories (array of even numbers)
-    M_min = 2; M_max = 5; M_add = 2
+    M_min = 2; M_max = 20; M_add = 2
     n_memories = np.arange(M_min, M_max, M_add)
      
     n_maps = len(mappings) if mappings is not None else 0
@@ -40,7 +40,7 @@ if __name__ == "__main__":
         n_memories = n_memories,
         causal_measure = phase,
         mappings = mappings,
-        micro = True
+        micro = False
         )
     
     t_0 = time.perf_counter()
