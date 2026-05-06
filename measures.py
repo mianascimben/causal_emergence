@@ -377,16 +377,19 @@ def compute_mean_overlap(overlap_matrix, boltzmann_pdf):
 
     Returns
     -------
-    overlap_mean_over_configs : TYPE
-        DESCRIPTION.
-    overlap_mean_over_configs_and_patterns : TYPE
-        DESCRIPTION.
+    mean_overlap_per_pattern : array like
+        given a pattern, the overlap between each config with that pattern is 
+        averaged according to the boltzmann weights. The result is a measure of
+        how similar the configs of the system are to each pattern at the equilibrium.
+    system_mean_overlap : float
+        arithmetic average of the elements in 'mean_overlap_per_pattern'.
+        It measures how much the configs at the equilibrium looks like the 
+        memorized patterns
 
     '''
-    overlap_mean_over_configs = np.average(overlap_matrix, axis = 1, weights = boltzmann_pdf)
-    overlap_mean_over_configs_and_patterns = np.mean(overlap_mean_over_configs)
-    return overlap_mean_over_configs, overlap_mean_over_configs_and_patterns
-
+    mean_overlap_per_pattern = np.average(overlap_matrix, axis = 1, weights = boltzmann_pdf)
+    system_mean_overlap = np.mean(mean_overlap_per_pattern)
+    return mean_overlap_per_pattern, system_mean_overlap
 # =============================================================================
 # 
 # def compute_phase_diagram(temperatures, memories, patterns, f, mapping = None):
@@ -474,7 +477,7 @@ def compute_mean_overlap(overlap_matrix, boltzmann_pdf):
 #                
 #             if mapping is not None: 
 #                 for k, mapp in enumerate(mapping): 
-#                     cs = CoarseGraining(sm, dm, sm.patterns, mapp)
+#                     cs = CoarseGraining(sm, mapp, dm)
 #                     sM, dM = cs.build_macro_model()
 #                     phases[i, j, k + 1] = getattr(CausalMeasure(dM.TPM, sM.n_configs), f)()
 #                     
@@ -569,7 +572,7 @@ def compute_phase_diagram(phase_class, patterns):
             
             if phase_class.mappings is not None: 
                 for k, mapp in enumerate(phase_class.mappings): 
-                    cs = CoarseGraining(sm, dm, sm.patterns, mapp)
+                    cs = CoarseGraining(sm, mapp, dm)
                     sM, dM = cs.build_macro_model()
                     phases[i, j, k + 1] = getattr(CausalMeasure(dM.TPM, sM.n_configs), 
                                                   phase_class.causal_measure)()
@@ -607,7 +610,7 @@ def function(parameters, patterns, causal_measure, mappings=None, micro=True): #
             
     if mappings is not None: 
         for k, mapp in enumerate(mappings): 
-            cs = CoarseGraining(sm, dm, sm.patterns, mapp)
+            cs = CoarseGraining(sm, mapp, dm)
             sM, dM = cs.build_macro_model()
             phases[k + 1] = getattr(CausalMeasure(dM.TPM, sM.n_configs), 
                                                   causal_measure)()

@@ -16,23 +16,28 @@ class CoarseGraining:
     system and dynamics.
     '''
     
-    def __init__(self, system, dynamics, patterns, block_sizes, relabeling = None):
+    def __init__(self, system, block_sizes, dynamics = None, relabeling = None):
         self.system = system
+        self.patterns = self.system.patterns
         
         if relabeling is not None: 
             self.micro_configs = shuffle_spin_order(system.configs, relabeling)
-            patterns = shuffle_spin_order(patterns, relabeling)
+            self.patterns = shuffle_spin_order(self.patterns, relabeling)
 
         else: 
             self.micro_configs = system.configs
             
-        self.TPM_micro = dynamics.TPM
         self.block_sizes = block_sizes # qui poi con un if calcolerò i vari blocchi nel caso non siano passati a mano
         
         
-        self.macro_patterns, _ = self.map_micro_to_macro(patterns) # se vuoi poi calcella macro_patterns_idx
+        self.macro_patterns, _ = self.map_micro_to_macro(self.patterns) # se vuoi poi calcella macro_patterns_idx
         self.macro_configs, self.macro_idx = self.map_micro_to_macro(self.micro_configs)
-        self.macro_system, self.macro_dynamics  = self.build_macro_model()
+        
+        if dynamics is not None:
+            self.TPM_micro = dynamics.TPM
+            self.macro_system, self.macro_dynamics  = self.build_macro_model()
+        else: 
+            self.macro_system = self.build_macro_system()
         
     def map_micro_to_macro(self, configs): 
       '''
@@ -90,18 +95,23 @@ class CoarseGraining:
         
         return TPM_macro  
     
-    def build_macro_model(self):
-        
+    def build_macro_system(self):
         # macro configurations realized by the micro configurations 
         macro_configs = np.unique(self.macro_configs, axis=0)
-        
+        # number of macro spins
+        N_macro = macro_configs.shape[1]
+        macro_system = IsingSystem(N_macro, self.macro_patterns, self.system.beta, macro_configs)
+        return macro_system
+    
+    def build_macro_dynamics(self, macro_system):
         # macro TPM
         macro_TPM = self.coarse_graining_tpm()
         
-        # number of macro spins
-        N_macro = macro_configs.shape[1]
-        
-        macro_system = IsingSystem(N_macro, self.macro_patterns, self.system.beta, macro_configs)
         macro_dynamics = GlauberDynamics(macro_system, macro_TPM)
+        return macro_dynamics
+    
+    def build_macro_model(self):
         
+        macro_system = self.build_macro_system()
+        macro_dynamics = self.build_macro_dynamics(macro_system)
         return macro_system, macro_dynamics

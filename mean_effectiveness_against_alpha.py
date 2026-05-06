@@ -22,9 +22,7 @@ micro = False
 n_maps = len(mappings) if mappings is not None else 0
 
 phase = 'effectiveness'
-
-#T_min = 0.01; T_max = 3.01; T_points = 5
-#temps = np.linspace(T_min, T_max, T_points) 
+ 
 T= 0.01      
 temps = np.array([T])
 

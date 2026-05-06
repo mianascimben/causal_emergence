@@ -28,7 +28,7 @@ for i, mapping in enumerate(mapping_list):
     N_macro_spin = len(mapping)
     system_info = store_system_information(N_spin, T, N_macro_spin, groups = 'multiple groups')
     
-    cs = CoarseGraining(sm, dm, patterns, mapping)  #questo passaggio non mi piace. non salva robe utili che system o dynamics non abbia se non i macro patterns
+    cs = CoarseGraining(sm, mapping, dm)  #questo passaggio non mi piace. non salva robe utili che system o dynamics non abbia se non i macro patterns
 
     sM, dM = cs.build_macro_model()
         
